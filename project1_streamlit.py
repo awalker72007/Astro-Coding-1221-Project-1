@@ -127,9 +127,10 @@ def main():
         with st.spinner("Creating constellations..."):
             if num_stars > num_clusters:
                 generate_random_constellations()
+                st.rerun()
             else: 
                 st.warning("Number of clusters exceeds the number of stars. Add more stars or lower the number of clusters.")
-        st.rerun()
+        
 
     if os.path.exists("astroplot.png"):
         st.image("astroplot.png")
