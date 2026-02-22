@@ -125,7 +125,10 @@ def main():
 
     if st.button("Generate new constellations"):
         with st.spinner("Creating constellations..."):
-            generate_random_constellations()
+            if num_stars > num_clusters:
+                generate_random_constellations()
+            else: 
+                st.warning("Number of clusters exceeds the number of stars. Add more stars or lower the number of clusters.")
         st.rerun()
 
     if os.path.exists("astroplot.png"):
@@ -140,7 +143,7 @@ def main():
             else:
                 st.warning("Could not get mythologies. Check your API key and connection.")
     else:
-        st.info("Click **Generate new constellations** to create 5-6.")
+        st.info("Click **Generate new constellations** to create your constellations.")
 
 
 if __name__ == "__main__":
