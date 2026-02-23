@@ -20,7 +20,8 @@ astro1221_key = os.getenv("ASTRO1221_API_KEY")
 
 num_clusters = 5
 num_stars = 30
-#Default values of stars and clusters, will be changed by Streamlit file
+rotation_angle_deg = 0  # degrees; rotate star coords around (0, 0)
+#Default values of stars, clusters, and angle, will be changed by Streamlit 
 
 def generate_random_constellations():
 
@@ -29,15 +30,34 @@ def generate_random_constellations():
     ax.set_facecolor("#0e1117")
     global num_stars
     global num_clusters
-    #ALlowing num_stars and num_clusters to be accessed in the definition
+    global rotation_angle_deg
+    #ALlowing num_stars, num_clusters, and rotation_angle_deg to be changed by streamlit
     if num_stars < num_clusters:
         return "Error: Number of clusters is more than the number of stars"
         #Simple check to prevent error from kmeans clustering
+
+    # Use existing base coordinates if available; otherwise create and store them
+    if "base_star_coords" in st.session_state:
+        base_x_vals, base_y_vals, sizes = st.session_state["base_star_coords"]
+        # If the number of stars has changed, regenerate coordinates
+        if len(base_x_vals) != num_stars:
+            base_x_vals = np.random.uniform(-4, 4, num_stars)
+            base_y_vals = np.random.uniform(-3, 3, num_stars)
+            sizes = np.random.randint(20, 100, num_stars)
+            st.session_state["base_star_coords"] = (base_x_vals, base_y_vals, sizes)
     else:
-        x_vals = np.random.uniform(-4, 4, num_stars)
-        y_vals = np.random.uniform(-3, 3, num_stars)
+        base_x_vals = np.random.uniform(-4, 4, num_stars)
+        base_y_vals = np.random.uniform(-3, 3, num_stars)
         sizes = np.random.randint(20, 100, num_stars)
         #Creating stars and randomizing their sizes
+        st.session_state["base_star_coords"] = (base_x_vals, base_y_vals, sizes)
+
+    # Apply rotation to the base coordinates to get the displayed coordinates
+    theta = np.radians(rotation_angle_deg)
+    cos_t, sin_t = np.cos(theta), np.sin(theta)
+    x_vals = base_x_vals * cos_t - base_y_vals * sin_t
+    y_vals = base_x_vals * sin_t + base_y_vals * cos_t
+    #Using rotation angle from streamlit to rotate the picture
 
     circle = Circle((0, 0), radius=5, color='black', fill = True)
     ax.add_patch(circle)
@@ -87,7 +107,6 @@ def generate_random_constellations():
                 ax.add_line(connection)
                 #Adding the connection to the figure
 
-
     ax.scatter(x_vals, y_vals, s=sizes, marker="*", c=kmeans.labels_, alpha=1)
     #Plotting the points on the graph
     ax.set_xticks([])
@@ -100,7 +119,6 @@ def generate_random_constellations():
     fig.savefig("astroplot.png")
     #Saving the figure to be used by Streamlit and the LLM
     plt.close(fig)
-
 
 def get_mythology_from_llm(image_path="astroplot.png"):
     """Call LLM with the constellation image to generate mythology."""
@@ -136,8 +154,6 @@ def get_mythology_from_llm(image_path="astroplot.png"):
     if response and response.choices:
         return response.choices[0].message.content
     return None
-    
-
 
 def main():
     st.set_page_config(page_title="Constellations & Mythology", layout="wide")
@@ -154,7 +170,13 @@ def main():
     num_clusters = st.slider("num_clusters", min_value = 1, max_value = 20)
     #Giving users the ability to change the amount of clusters
 
-    if st.button("Generate new constellations"):
+    global rotation_angle_deg
+    rotation_angle_deg = st.slider("Rotation (degrees)", min_value=0, max_value=360, value=0)
+    #Rotate star coordinates around (0, 0) by this angle before clustering/drawing
+    
+    if st.button("Generate new constellations"): 
+        st.session_state.pop("base_star_coords", None)
+        #clear 
         with st.spinner("Creating constellations..."):
             if num_stars > num_clusters:
                 generate_random_constellations()
@@ -162,6 +184,15 @@ def main():
             else: 
                 st.warning("Number of clusters exceeds the number of stars. Add more stars or lower the number of clusters.")
                 #Same type of warning as in generate_random_constellation, but written in Streamlit
+
+    if st.button("Rotate"):
+        #Rotate existing constellation by the current slider angle
+        if "base_star_coords" in st.session_state:
+            with st.spinner("Rotating..."):
+                generate_random_constellations()
+            st.rerun()
+        else:
+            st.warning("Generate constellations first, then use Rotate to spin them.")
 
     if os.path.exists("astroplot.png"):
         st.image("astroplot.png")
