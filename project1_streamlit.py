@@ -92,7 +92,8 @@ def generate_random_constellations():
     ax.set_yticks([])
     ax.set_frame_on(False)
     plt.title("Random Constellations", fontsize=14, fontweight="bold", color="white")
-
+    plt.ylim(-5, 5)
+    plt.xlim(-5, 5)
     fig.savefig("astroplot.png")
     plt.close(fig)
 
