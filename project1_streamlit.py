@@ -1,7 +1,6 @@
 import os
 import base64
 import warnings
-
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle
@@ -16,10 +15,12 @@ warnings.filterwarnings("ignore", category=UserWarning, module="pydantic")
 custom_api_base = "https://litellmproxy.osu-ai.org/"
 load_dotenv()
 astro1221_key = os.getenv("ASTRO1221_API_KEY")
+#Grabbing the API key from .env file
 
-# Default number of clusters, will be changed by streamlit
+
 num_clusters = 5
 num_stars = 30
+#Default values of stars and clusters, will be changed by Streamlit file
 
 def generate_random_constellations():
 
@@ -28,29 +29,26 @@ def generate_random_constellations():
     ax.set_facecolor("#0e1117")
     global num_stars
     global num_clusters
+    #ALlowing num_stars and num_clusters to be accessed in the definition
     if num_stars < num_clusters:
         return "Error: Number of clusters is more than the number of stars"
+        #Simple check to prevent error from kmeans clustering
     else:
-        x_vals = np.random.uniform(0, 10, num_stars)
-        y_vals = np.random.uniform(0, 10, num_stars)
+        x_vals = np.random.uniform(-4, 4, num_stars)
+        y_vals = np.random.uniform(-3, 3, num_stars)
         sizes = np.random.randint(20, 100, num_stars)
+        #Creating stars and randomizing their sizes
 
     circle = Circle((0, 0), radius=5, color='black', fill = True)
-
     ax.add_patch(circle)
-
     ax.set_aspect('equal', adjustable='datalim')
-
-    ax.set_xlim(-4,4)
-    ax.set_ylim(-3,3)
-
-    x_vals = np.random.uniform(-4, 4, num_stars)
-    y_vals = np.random.uniform(-3, 3, num_stars)
+    #Creating a circle within the graph, stars will only be drawn in the graph
 
     coords = np.column_stack((x_vals, y_vals))
     kmeans = KMeans(n_clusters=num_clusters, n_init=10)
     kmeans.fit(coords)
     labels = kmeans.labels_
+    #Creating the clusters and assigning labels to each cluster
 
     for cluster_id in range(kmeans.n_clusters):
         indices = np.where(labels == cluster_id)[0]
@@ -76,6 +74,7 @@ def generate_random_constellations():
                         d2 = (px[a] - px[b]) ** 2 + (py[a] - py[b]) ** 2
                         if d2 < best_d2:
                             best_d2, best_a, best_b = d2, a, b
+                            #Comparing distances to draw lines, closest distances will have lines drawn to them
                 in_tree[best_b] = True
                 idx_a, idx_b = indices[best_a], indices[best_b]
                 connection = plt.Line2D(
@@ -86,15 +85,20 @@ def generate_random_constellations():
                     linewidth=1,
                 )
                 ax.add_line(connection)
+                #Adding the connection to the figure
+
 
     ax.scatter(x_vals, y_vals, s=sizes, marker="*", c=kmeans.labels_, alpha=1)
+    #Plotting the points on the graph
     ax.set_xticks([])
     ax.set_yticks([])
     ax.set_frame_on(False)
     plt.title("Random Constellations", fontsize=14, fontweight="bold", color="white")
     plt.ylim(-5, 5)
     plt.xlim(-5, 5)
+    #All cosmetic changes to the graph
     fig.savefig("astroplot.png")
+    #Saving the figure to be used by Streamlit and the LLM
     plt.close(fig)
 
 
@@ -102,8 +106,10 @@ def get_mythology_from_llm(image_path="astroplot.png"):
     """Call LLM with the constellation image to generate mythology."""
     if not astro1221_key:
         return None
+        #Check for the API key
     with open(image_path, "rb") as f:
         encoded_image = base64.b64encode(f.read()).decode("utf-8")
+        #Encoding the image into base64 to send to the LLM
     response = litellm.completion(
         model="openai/GPT-4.1-mini",
         messages=[
@@ -125,10 +131,12 @@ def get_mythology_from_llm(image_path="astroplot.png"):
         api_base=custom_api_base,
         api_key=astro1221_key,
         temperature=0.3,
+        #Parameters for the LLM, setting max tokens so the LLM doesn't use too much money
     )
     if response and response.choices:
         return response.choices[0].message.content
     return None
+    
 
 
 def main():
@@ -136,14 +144,15 @@ def main():
     st.title("Random Constellations Generator with Mythology")
     st.write(
         "This is a constellation generator, where we incorporate LLM into generating mythology with the set of constellations you receive :)")
+    #Setting the title and subheading 
 
     global num_stars 
     num_stars = st.slider("num_stars", min_value = 1, max_value = 200)
-    #Ability to change number of stars
+    #Ability to change number of stars via a slider
 
     global num_clusters
     num_clusters = st.slider("num_clusters", min_value = 1, max_value = 20)
-    #giving users the ability to change the amount of clusters
+    #Giving users the ability to change the amount of clusters
 
     if st.button("Generate new constellations"):
         with st.spinner("Creating constellations..."):
@@ -152,6 +161,7 @@ def main():
                 st.rerun()
             else: 
                 st.warning("Number of clusters exceeds the number of stars. Add more stars or lower the number of clusters.")
+                #Same type of warning as in generate_random_constellation, but written in Streamlit
 
     if os.path.exists("astroplot.png"):
         st.image("astroplot.png")
@@ -164,6 +174,8 @@ def main():
                 st.write(story)
             else:
                 st.warning("Could not get mythologies. Check your API key and connection.")
+                #If the LLM returns nothing give a warning
+
     else:
         st.info("Click **Generate new constellations** to create constellations.")
 
