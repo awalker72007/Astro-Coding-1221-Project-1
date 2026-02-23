@@ -1,10 +1,11 @@
 import os
-import random
 import base64
 import warnings
 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.patches import Circle
+import random
 import litellm
 from sklearn.cluster import KMeans
 from dotenv import load_dotenv
@@ -23,8 +24,8 @@ num_stars = 30
 def generate_random_constellations():
 
 
-    fig, ax = plt.subplots(figsize=(8, 8), facecolor="black")
-    ax.set_facecolor("black")
+    fig, ax = plt.subplots(figsize=(8, 8), facecolor="#0e1117")
+    ax.set_facecolor("#0e1117")
     global num_stars
     global num_clusters
     if num_stars < num_clusters:
@@ -34,14 +35,34 @@ def generate_random_constellations():
         y_vals = np.random.uniform(0, 10, num_stars)
         sizes = np.random.randint(20, 100, num_stars)
 
-        coords = np.column_stack((x_vals, y_vals))
-        kmeans = KMeans(n_clusters=num_clusters, n_init=10)
-        kmeans.fit(coords)
-        labels = kmeans.labels_
+    circle = Circle((0, 0), radius=5, color='black', fill = True)
 
-        for cluster_id in range(kmeans.n_clusters):
-            indices = np.where(labels == cluster_id)[0]
-            n = len(indices)
+    ax.add_patch(circle)
+
+    ax.set_aspect('equal', adjustable='datalim')
+
+    ax.set_xlim(-4,4)
+    ax.set_ylim(-3,3)
+
+    x_vals = np.random.uniform(-4, 4, num_stars)
+    y_vals = np.random.uniform(-3, 3, num_stars)
+
+    coords = np.column_stack((x_vals, y_vals))
+    kmeans = KMeans(n_clusters=num_clusters, n_init=10)
+    kmeans.fit(coords)
+    labels = kmeans.labels_
+
+    for cluster_id in range(kmeans.n_clusters):
+        indices = np.where(labels == cluster_id)[0]
+        n = len(indices)
+        if n < 2:
+            continue
+        px = x_vals[indices]
+        py = y_vals[indices]
+        in_tree = np.zeros(n, dtype=bool)
+        in_tree[0] = True
+        for _ in range(n - 1):
+            best_a, best_b, best_d2 = -1, -1, np.inf
             if n < 2:
                 continue
             px = x_vals[indices]
@@ -125,12 +146,8 @@ def main():
 
     if st.button("Generate new constellations"):
         with st.spinner("Creating constellations..."):
-            if num_stars > num_clusters:
-                generate_random_constellations()
-                st.rerun()
-            else: 
-                st.warning("Number of clusters exceeds the number of stars. Add more stars or lower the number of clusters.")
-        
+            generate_random_constellations()
+        st.rerun()
 
     if os.path.exists("astroplot.png"):
         st.image("astroplot.png")
@@ -144,7 +161,7 @@ def main():
             else:
                 st.warning("Could not get mythologies. Check your API key and connection.")
     else:
-        st.info("Click **Generate new constellations** to create your constellations.")
+        st.info("Click **Generate new constellations** to create constellations.")
 
 
 if __name__ == "__main__":
